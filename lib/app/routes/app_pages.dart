@@ -7,11 +7,11 @@ part 'app_routes.dart';
 class AppPages {
   AppPages._();
 
-  static const INITIAL = Routes.COUNTRIES;
+  static const initial = Routes.countries;
 
   static final routes = [
     GetPage(
-      name: _Paths.COUNTRIES,
+      name: _Paths.countries,
       page: () => const CountryListPage(),
       binding: BindingsBuilder(() {
         Get.lazyPut<CountryController>(() => CountryController());

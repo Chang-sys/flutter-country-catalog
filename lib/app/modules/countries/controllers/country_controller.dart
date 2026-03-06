@@ -10,27 +10,21 @@ enum SortOrder { asc, desc }
 class CountryController extends GetxController {
   final ApiService _apiService = ApiService();
 
-  // Source of truth (all countries fetched from API)
   final RxList<Country> _allCountries = <Country>[].obs;
 
-  // Visible list (filtered / sorted / paginated)
   final RxList<Country> countries = <Country>[].obs;
 
   final RxBool isLoading = false.obs;
   final Rx<Country?> selectedCountry = Rx<Country?>(null);
 
-  // Search & UI state
   final RxString query = ''.obs;
   final Rx<SortOrder> sortOrder = SortOrder.asc.obs;
 
-  /// NEW: expose whether search UI is open (use this instead of a local _isSearching)
   final RxBool isSearching = false.obs;
 
-  // Pagination
   final int pageSize = 25;
   final RxInt page = 0.obs;
 
-  // Fuzzy threshold (0 - 100). Tune to your liking.
   final int fuzzyThreshold = 50;
 
   @override
@@ -38,7 +32,6 @@ class CountryController extends GetxController {
     super.onInit();
     fetchCountries();
 
-    // debounce query changes so we only compute search after user stops typing
     debounce(
       query,
       (_) => _applyFilters(),
@@ -46,9 +39,6 @@ class CountryController extends GetxController {
     );
   }
 
-  // -----------------------
-  // Network
-  // -----------------------
   Future<void> fetchCountries() async {
     try {
       isLoading.value = true;
@@ -73,9 +63,7 @@ class CountryController extends GetxController {
     }
   }
 
-  // -----------------------
   // Search - uses local fuzzywuzzy search
-  // -----------------------
   Future<void> searchCountriesRemote(String q) async {
     try {
       isLoading.value = true;
@@ -90,29 +78,21 @@ class CountryController extends GetxController {
     }
   }
 
-  // If the UI calls this, it simply updates the query (debounced)
   void setQuery(String q) {
     query.value = q.trim();
-    // debounce will call _applyFilters automatically
   }
 
-  /// Keep this for when you only want to clear the query (but keep search UI open)
   void clearQuery() {
     if (query.isNotEmpty) {
       query.value = '';
-      // immediate apply (debounce callback won't be needed)
       _applyFilters();
     }
   }
 
-  /// NEW: open search UI
   void openSearch() {
     isSearching.value = true;
-    // leave keyboard handling to UI / widget; widget has autofocus true
   }
 
-  /// NEW: close search UI; optionally clear query
-  /// This also hides the keyboard defensively (no BuildContext required).
   void closeSearch({bool clear = true}) {
     if (clear) {
       if (query.isNotEmpty) {
@@ -122,20 +102,16 @@ class CountryController extends GetxController {
     }
     isSearching.value = false;
 
-    // hide keyboard (defensive)
     try {
       FocusManager.instance.primaryFocus?.unfocus();
-    } catch (_) {
-      // ignore
+    } catch (error) {
+      debugPrint('[CountryController] closeSearch error: $error');
     }
   }
 
-  /// NEW: convenience that both clears the query and closes UI (same as closeSearch(clear:true))
   void clearAndClose() => closeSearch(clear: true);
 
-  // -----------------------
   // Sorting / Pagination
-  // -----------------------
   void toggleSort() {
     sortOrder.value = sortOrder.value == SortOrder.asc
         ? SortOrder.desc
@@ -170,17 +146,14 @@ class CountryController extends GetxController {
     return countries.sublist(start, end);
   }
 
-  // -----------------------
-  // Core filter logic (fuzzy + sort)
-  // -----------------------
+  // Filter logic (fuzzy + sort)
   void _applyFilters() {
-    // Make a working copy so we don't mutate source
     final List<Country> list = List<Country>.from(_allCountries);
 
     final q = query.value.trim().toLowerCase();
 
     if (q.isNotEmpty) {
-      // 1) Fast substring / word-start matching (preferred for "contains" behavior)
+      // Fast substring / word-start matching (preferred for "contains" behavior)
       final filtered = list.where((c) {
         final name = c.nameOfficial.toLowerCase();
         // contains anywhere OR any word starts with query (so "kingdom cam" will match)
@@ -194,7 +167,7 @@ class CountryController extends GetxController {
           ..clear()
           ..addAll(filtered);
       } else {
-        // 2) Fallback to fuzzy matching if no simple matches found
+        // Fallback to fuzzy matching if no simple matches found
         final List<MapEntry<Country, int>> scored = list
             .map((c) {
               final score = ratio(c.nameOfficial.toLowerCase(), q);
@@ -212,7 +185,7 @@ class CountryController extends GetxController {
       }
     }
 
-    // Apply alphabetical sorting (by official name) as before
+    // Apply alphabetical sorting by official name
     list.sort((a, b) {
       final cmp = a.nameOfficial.toLowerCase().compareTo(
         b.nameOfficial.toLowerCase(),

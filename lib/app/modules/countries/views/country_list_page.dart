@@ -15,7 +15,6 @@ class CountryListPage extends StatefulWidget {
 }
 
 class _CountryListPageState extends State<CountryListPage> {
-  // Use Get.find to obtain the controller (controller must be created/bound elsewhere or via Get.put)
   final CountryController controller = Get.find<CountryController>();
   final TextEditingController _searchController = TextEditingController();
   late final VoidCallback _searchListener;
